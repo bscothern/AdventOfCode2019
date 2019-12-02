@@ -8,7 +8,7 @@ let package = Package(
     products: [
         .executable(
             name: "Day1",
-            targets: ["Day1"]
+            targets: ["Day1", "Day1Lib"]
         ),
     ],
     dependencies: [
@@ -16,11 +16,15 @@ let package = Package(
     targets: [
         .target(
             name: "Day1",
+            dependencies: ["Day1Lib"]
+        ),
+        .target(
+            name: "Day1Lib",
             dependencies: []
         ),
         .testTarget(
-            name: "Day1Tests",
-            dependencies: ["Day1"]
+            name: "Day1LibTests",
+            dependencies: ["Day1Lib"]
         ),
     ]
 )

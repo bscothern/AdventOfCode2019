@@ -5,8 +5,6 @@
 //  Created by Braden Scothern on 12/1/19.
 //
 
-import Foundation
-
 let input: String = """
 146561
 98430
