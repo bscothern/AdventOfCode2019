@@ -1,4 +1,4 @@
-import Day1Lib
+import Day01Lib
 
 class Main {
     func run() {
