@@ -45,6 +45,8 @@ public struct Wire {
         }
     }
     
+    fileprivate typealias OverlayValue = (path: Path, step1: Int, step2: Int)
+    
     let directions: [Direction]
     let width: Int
     let height: Int
@@ -88,15 +90,16 @@ public struct Wire {
         origin = Point(x: -leftEdge, y: -bottomEdge)
     }
     
-    public func intersections(with other: Wire) -> (Set<Point>, origin: Point) {
-        let overlayWidth = Swift.max(width, other.width) + abs(origin.x - other.origin.x)
-        let overlayHeight = Swift.max(height, other.height) + abs(origin.y - other.origin.y)
-        let overlayOrigin = Point(x: Swift.max(origin.x, other.origin.x), y: Swift.max(origin.y, other.origin.y))
+    public func intersections(with other: Wire) -> (Set<Point>, origin: Point, steps: [Point: Int]) {
+        let overlayWidth = max(width, other.width) + abs(origin.x - other.origin.x)
+        let overlayHeight = max(height, other.height) + abs(origin.y - other.origin.y)
+        let overlayOrigin = Point(x: max(origin.x, other.origin.x), y: max(origin.y, other.origin.y))
         
-        var overlay = [[Path]](repeating: [Path](repeating: .empty, count: overlayWidth), count: overlayHeight)
+        var overlay = [[OverlayValue]](repeating: [OverlayValue](repeating: (.empty, .max, .max), count: overlayWidth), count: overlayHeight)
         
         var currentPosition = overlayOrigin
-        overlay[currentPosition] = .origin
+        var stepCount = 0
+        overlay[currentPosition].path = .origin
 
         directions.forEach { direction in
             var moveCount: Int
@@ -118,12 +121,15 @@ public struct Wire {
             
             for _ in 0 ..< moveCount {
                 currentPosition += offset
-                overlay[currentPosition] = .one
+                stepCount += 1
+                overlay[currentPosition].path = .one
+                overlay[currentPosition].step1 = min(overlay[currentPosition].step1, stepCount)
             }
         }
         
-        var intersections: Set<Point> = []
         currentPosition = overlayOrigin
+        stepCount = 0
+        var intersections: Set<Point> = []
         other.directions.forEach { direction in
             var moveCount: Int
             var offset: Point
@@ -144,13 +150,16 @@ public struct Wire {
             
             for _ in 0 ..< moveCount {
                 currentPosition += offset
-                switch overlay[currentPosition] {
+                stepCount += 1
+                switch overlay[currentPosition].path {
                 case .empty:
-                    overlay[currentPosition] = .two
+                    overlay[currentPosition].path = .two
+                    overlay[currentPosition].step2 = min(overlay[currentPosition].step2, stepCount)
                 case .origin:
                     break
                 case .one:
-                    overlay[currentPosition] = .intersection
+                    overlay[currentPosition].path = .intersection
+                    overlay[currentPosition].step2 = min(overlay[currentPosition].step2, stepCount)
                     intersections.insert(currentPosition)
                 case .two:
                     break
@@ -160,12 +169,15 @@ public struct Wire {
             }
         }
         
-        return (intersections, overlayOrigin)
+        return (intersections, overlayOrigin, .init(uniqueKeysWithValues: intersections.map { intersection -> (Point, Int) in
+            let value = overlay[intersection]
+            return (intersection, value.step1 + value.step2)
+        }))
     }
 }
 
-fileprivate extension Array where Element == [Wire.Path] {
-    subscript(point: Point) -> Wire.Path {
+fileprivate extension Array where Element == [Wire.OverlayValue] {
+    subscript(point: Point) -> Wire.OverlayValue {
         get { self[point.y][point.x] }
         set { self[point.y][point.x] = newValue }
     }
